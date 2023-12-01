@@ -1,6 +1,7 @@
 import cv2
 import math
 import numpy as np
+import time
 import os
 import queue
 import threading
@@ -112,7 +113,41 @@ class RealESRGANer():
 
     def process(self):
         # model inference
+        iter_time = 100
+
+        shapes = [(1, 3, 768, 768), (1, 3, 1024, 1024), (1, 3, 970, 970), (1, 3, 1162, 778)]
+        for i in range(4):
+            fake_input = torch.randn(shapes[i], dtype = torch.float16).cuda()
+            fake_output = self.model(fake_input)
+            start = time.time()
+            for i in range(iter_time):
+                fake_output = self.model(fake_input)
+            end = time.time()
+            print("each forward cost {} ms".format((end - start) / iter_time))
+
         self.output = self.model(self.img)
+        start = time.time()
+        for i in range(iter_time):
+            self.output = self.model(self.img)
+        end = time.time()
+        print("each forward cost {} ms".format((end - start) / iter_time))
+
+        # inputs = self.img.float()
+        # dynamic_axes = {
+            # 'x': {0:'batch', 2: 'H', 3: 'W'} }
+        # new_model = self.model.to(torch.float)
+        # with torch.inference_mode():
+            # torch.onnx.export(new_model,
+                # inputs,
+                # f"/mnt/hpc/share/wjf/Repos/Real-ESRGAN/onnx/esrgan_reuse_concat.onnx",
+                # export_params=True,
+                # opset_version=13,
+                # do_constant_folding=True,
+                # verbose=False,
+                # input_names=['x'],
+                # output_names=['output'],
+                # dynamic_axes=dynamic_axes,
+                # operator_export_type=torch.onnx.OperatorExportTypes.ONNX)
 
     def tile_process(self):
         """It will first crop input images to tiles, and then process each tile.
